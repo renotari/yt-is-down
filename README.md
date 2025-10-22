@@ -7,9 +7,11 @@ A simple YouTube video downloader with both GUI and command-line interfaces, bui
 - Download YouTube videos in various qualities
 - Audio-only downloads (MP3 format)
 - Both graphical and command-line interfaces
-- Progress tracking
+- Smart clipboard integration with URL validation
+- Progress tracking with detailed information
 - Video information preview
 - Custom output directory selection
+- Comprehensive error handling and timeouts
 
 ## Installation
 
@@ -29,12 +31,14 @@ python gui.py
 ```
 
 Features:
-- Paste YouTube URL
+- **Smart Paste Button**: Automatically detects and validates YouTube URLs from clipboard
+- **URL Validation**: Real-time validation with helpful error messages
 - Get video information before downloading
-- Select video quality
-- Choose audio-only option
+- Select video quality from available formats
+- Choose audio-only option (MP3 conversion)
 - Set custom output directory
-- Real-time progress tracking
+- Real-time progress tracking with speed and ETA
+- **Keyboard Shortcuts**: Ctrl+Shift+V to paste and validate URLs
 
 ### Command Line Interface
 
@@ -48,6 +52,7 @@ Options:
 - `-q, --quality`: Video quality (best, worst, or specific like 720p)
 - `-a, --audio-only`: Download audio only (MP3)
 - `-i, --info`: Show video information only
+- `-t, --timeout`: Network timeout in seconds (default: 30)
 
 Examples:
 ```bash
@@ -65,6 +70,9 @@ python cli.py -o "C:\MyVideos" "https://www.youtube.com/watch?v=VIDEO_ID"
 
 # Get video info only
 python cli.py -i "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# Set custom timeout (60 seconds)
+python cli.py -t 60 "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
 ## Requirements
@@ -80,9 +88,26 @@ python cli.py -i "https://www.youtube.com/watch?v=VIDEO_ID"
 - The tool supports most YouTube video formats and qualities
 - For audio extraction, FFmpeg may be required (yt-dlp will prompt if needed)
 
-## Troubleshooting
+## Error Handling & Troubleshooting
 
-If you encounter issues:
-1. Make sure you have the latest version of yt-dlp: `pip install --upgrade yt-dlp`
-2. For audio extraction issues, install FFmpeg
-3. Check that the YouTube URL is valid and accessible
+The application includes comprehensive error handling for common issues:
+
+### Network Issues
+- **Timeout errors**: Increase timeout with `-t` option or check internet connection
+- **Connection errors**: Verify network connectivity and try again
+
+### Video Issues  
+- **Invalid URL**: Ensure you're using a valid YouTube URL format
+- **Video unavailable**: Video may be private, deleted, or geo-restricted
+- **Age restrictions**: Some videos require authentication
+
+### System Issues
+- **Permission errors**: Check write permissions for output directory
+- **Disk space**: Ensure sufficient storage space for downloads
+
+### General Troubleshooting
+1. Update yt-dlp: `pip install --upgrade yt-dlp`
+2. Install FFmpeg for audio extraction
+3. Try increasing timeout for slow connections
+4. Check YouTube URL is valid and accessible
+5. Verify output directory permissions
