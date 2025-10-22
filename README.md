@@ -4,14 +4,16 @@ A simple YouTube video downloader with both GUI and command-line interfaces, bui
 
 ## Features
 
-- Download YouTube videos in various qualities
+- Download YouTube videos and playlists in various qualities
 - Audio-only downloads (MP3 format)
 - Both graphical and command-line interfaces
 - Smart clipboard integration with URL validation
+- **Safe playlist downloading** with 15-25 second delays between videos
 - Progress tracking with detailed information
-- Video information preview
+- Video and playlist information preview with time estimates
 - Custom output directory selection
 - Comprehensive error handling and timeouts
+- Playlist range selection for partial downloads
 
 ## Installation
 
@@ -31,13 +33,16 @@ python gui.py
 ```
 
 Features:
-- **Smart Paste Button**: Automatically detects and validates YouTube URLs from clipboard
+- **Smart Paste Button**: Automatically detects YouTube videos and playlists from clipboard
+- **Playlist Support**: Download entire playlists with safety delays (15-25 seconds between videos)
 - **URL Validation**: Real-time validation with helpful error messages
-- Get video information before downloading
+- **Time Estimates**: Shows estimated download time for playlists
+- Get video/playlist information before downloading
 - Select video quality from available formats
 - Choose audio-only option (MP3 conversion)
 - Set custom output directory
-- Real-time progress tracking with speed and ETA
+- Real-time progress tracking with playlist progress and ETA
+- **Safety First**: Built-in rate limiting to prevent IP blocking
 - **Keyboard Shortcuts**: Ctrl+Shift+V to paste and validate URLs
 
 ### Command Line Interface
@@ -53,6 +58,7 @@ Options:
 - `-a, --audio-only`: Download audio only (MP3)
 - `-i, --info`: Show video information only
 - `-t, --timeout`: Network timeout in seconds (default: 30)
+- `--playlist-range`: Download only specific range of videos (e.g., 1:10)
 
 Examples:
 ```bash
@@ -73,7 +79,39 @@ python cli.py -i "https://www.youtube.com/watch?v=VIDEO_ID"
 
 # Set custom timeout (60 seconds)
 python cli.py -t 60 "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# Download playlist (with safety delays)
+python cli.py "https://www.youtube.com/playlist?list=PLAYLIST_ID"
+
+# Download first 10 videos of playlist
+python cli.py --playlist-range 1:10 "https://www.youtube.com/playlist?list=PLAYLIST_ID"
+
+# Get playlist information only
+python cli.py -i "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 ```
+
+## Playlist Downloads - Important Information
+
+### Safety First Approach
+This application prioritizes **safety over speed** when downloading playlists. We implement:
+
+- **15-25 second delays** between video downloads
+- **Conservative rate limiting** to respect YouTube's servers
+- **Automatic error handling** to skip failed videos and continue
+
+### Why the Delays?
+- **Prevents IP blocking**: Aggressive downloading can result in temporary bans
+- **Respects YouTube's infrastructure**: Reduces server load
+- **Ensures reliability**: Lower chance of failed downloads
+- **Sustainable operation**: Allows for large playlist downloads without interruption
+
+### Time Expectations
+- **Small playlist (10 videos)**: ~3-5 minutes
+- **Medium playlist (50 videos)**: ~15-20 minutes  
+- **Large playlist (100 videos)**: ~30-40 minutes
+- **Very large playlist (200+ videos)**: 1+ hours
+
+**This is normal and necessary for safe downloading!**
 
 ## Requirements
 

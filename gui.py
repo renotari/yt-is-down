@@ -5,7 +5,8 @@ import threading
 import time
 from downloader import (
     YouTubeDownloader, YouTubeDownloaderError, NetworkTimeoutError,
-    VideoUnavailableError, InvalidURLError
+    VideoUnavailableError, InvalidURLError, PlaylistError, 
+    PlaylistTooLargeError, PlaylistPrivateError
 )
 import os
 from pathlib import Path
@@ -515,13 +516,19 @@ This software is free and open source.
             
         def fetch_info():
             try:
-                self.progress_var.set("🔍 Getting video information...")
+                self.progress_var.set("🔍 Getting information...")
                 self.progress_bar.start()
                 
-                self.video_info = self.downloader.get_video_info(url)
+                # Use smart content detection
+                self.video_info = self.downloader.get_content_info(url)
                 
-                # Update UI in main thread
-                self.root.after(0, self.display_video_info)
+                # Check if it's a playlist and display accordingly
+                if self.video_info.get('is_playlist') or 'video_count' in self.video_info:
+                    self.video_info['is_playlist'] = True
+                    self.root.after(0, self.display_playlist_info)
+                else:
+                    self.video_info['is_playlist'] = False
+                    self.root.after(0, self.display_video_info)
                 
             except InvalidURLError as e:
                 error_msg = "Please enter a valid YouTube URL.\n\nSupported formats:\n• https://www.youtube.com/watch?v=...\n• https://youtu.be/...\n• https://m.youtube.com/watch?v=..."
@@ -587,6 +594,57 @@ This software is free and open source.
         # Update quality combobox
         self.quality_combo['values'] = formats
     
+    def display_playlist_info(self):
+        """Display playlist information with safety warnings"""
+        if not self.video_info:
+            return
+        
+        # Format estimated time
+        estimated_minutes = self.video_info['estimated_time_minutes']
+        if estimated_minutes < 60:
+            time_str = f"{estimated_minutes} minutes"
+        else:
+            hours = estimated_minutes // 60
+            minutes = estimated_minutes % 60
+            time_str = f"{hours}h {minutes}m"
+        
+        # Create playlist info text with safety warnings
+        info_text = f"📋 Playlist: {self.video_info['title']}\n\n"
+        info_text += f"👤 Uploader: {self.video_info['uploader']}\n\n"
+        info_text += f"📊 Videos: {self.video_info['video_count']} videos\n\n"
+        
+        # IMPORTANT: Safety warning about download time
+        info_text += f"⏰ ESTIMATED TIME: ~{time_str}\n"
+        info_text += f"⚠️  IMPORTANT: We use 15-25 second delays between downloads\n"
+        info_text += f"   to respect YouTube's servers and avoid IP blocking.\n"
+        info_text += f"   This is NORMAL and necessary for safe downloading.\n\n"
+        
+        if self.video_info['video_count'] > 50:
+            info_text += f"🚨 LARGE PLAYLIST WARNING:\n"
+            info_text += f"   This playlist will take considerable time to download.\n"
+            info_text += f"   Consider downloading in smaller batches.\n\n"
+        
+        info_text += f"📝 First few videos:\n"
+        for i, entry in enumerate(self.video_info['entries'][:5], 1):
+            title = entry.get('title', 'Unknown Title')
+            if len(title) > 50:
+                title = title[:47] + "..."
+            info_text += f"   {i}. {title}\n"
+        
+        if len(self.video_info['entries']) > 5:
+            info_text += f"   ... and {self.video_info['video_count'] - 5} more videos\n"
+        
+        info_text += f"\n✅ Playlist information loaded successfully!"
+        
+        self.info_text.config(state=tk.NORMAL)
+        self.info_text.delete(1.0, tk.END)
+        self.info_text.insert(1.0, info_text)
+        self.info_text.config(state=tk.DISABLED)
+        
+        # For playlists, quality options are the same
+        formats = ["best", "worst"]
+        self.quality_combo['values'] = formats
+    
     def browse_output_dir(self):
         directory = filedialog.askdirectory(initialdir=self.output_var.get())
         if directory:
@@ -607,15 +665,27 @@ This software is free and open source.
                 self.url_var.set(clipboard_content)
                 self.url_entry.focus()
                 
-                # Visual feedback - briefly change button color
-                self.paste_btn.configure(text="✅ Pasted", bg='#00c851')  # Green
-                self.root.after(1500, lambda: self.paste_btn.configure(text="📋 Paste", bg='#065fd4'))  # Blue
-                
-                # Show success message in status
-                self.progress_var.set("✅ Valid YouTube URL pasted!")
-                self.status_var.set("✅ Valid YouTube URL detected and pasted")
-                self.root.after(3000, lambda: self.progress_var.set("✨ Ready to download"))
-                self.root.after(3000, lambda: self.status_var.set("Ready • Press F1 for shortcuts"))
+                # Check if it's a playlist
+                if self.downloader._is_playlist_url(clipboard_content):
+                    # Visual feedback for playlist
+                    self.paste_btn.configure(text="📋 Playlist!", bg='#ff9500')  # Orange for playlist
+                    self.root.after(2000, lambda: self.paste_btn.configure(text="📋 Paste", bg='#065fd4'))
+                    
+                    # Show playlist message
+                    self.progress_var.set("📋 YouTube Playlist detected!")
+                    self.status_var.set("📋 Playlist detected - Click 'Get Video Info' to see details")
+                    self.root.after(4000, lambda: self.progress_var.set("✨ Ready to download"))
+                    self.root.after(4000, lambda: self.status_var.set("Ready • Press F1 for shortcuts"))
+                else:
+                    # Visual feedback for single video
+                    self.paste_btn.configure(text="✅ Pasted", bg='#00c851')  # Green
+                    self.root.after(1500, lambda: self.paste_btn.configure(text="📋 Paste", bg='#065fd4'))
+                    
+                    # Show success message
+                    self.progress_var.set("✅ Valid YouTube URL pasted!")
+                    self.status_var.set("✅ Valid YouTube URL detected and pasted")
+                    self.root.after(3000, lambda: self.progress_var.set("✨ Ready to download"))
+                    self.root.after(3000, lambda: self.status_var.set("Ready • Press F1 for shortcuts"))
                 
             else:
                 # Check if it looks like a URL but not YouTube
@@ -646,16 +716,20 @@ This software is free and open source.
         try:
             clipboard_content = self.root.clipboard_get().strip()
             if clipboard_content and self.downloader._is_valid_url(clipboard_content):
-                # Clipboard contains valid YouTube URL
-                if self.paste_btn.cget('text') == '📋 Paste':
-                    self.paste_btn.configure(text='📋 Paste URL', bg='#00c851')  # Green
+                # Check if it's a playlist or single video
+                if self.downloader._is_playlist_url(clipboard_content):
+                    if self.paste_btn.cget('text') == '📋 Paste':
+                        self.paste_btn.configure(text='📋 Playlist', bg='#ff9500')  # Orange for playlist
+                else:
+                    if self.paste_btn.cget('text') == '📋 Paste':
+                        self.paste_btn.configure(text='📋 Paste URL', bg='#00c851')  # Green for video
             else:
                 # No valid YouTube URL in clipboard
-                if 'URL' in self.paste_btn.cget('text'):
+                if 'URL' in self.paste_btn.cget('text') or 'Playlist' in self.paste_btn.cget('text'):
                     self.paste_btn.configure(text='📋 Paste', bg='#065fd4')  # Blue
         except (tk.TclError, Exception):
             # Clipboard error or empty - reset button
-            if 'URL' in self.paste_btn.cget('text'):
+            if 'URL' in self.paste_btn.cget('text') or 'Playlist' in self.paste_btn.cget('text'):
                 self.paste_btn.configure(text='📋 Paste', bg='#065fd4')  # Blue
         
         # Check again in 2 seconds
@@ -677,6 +751,14 @@ This software is free and open source.
         try:
             status = d.get('status', 'unknown')
             
+            # Handle playlist-specific status updates
+            if status == 'playlist_starting':
+                playlist_info = d.get('playlist_info', {})
+                message = d.get('message', '')
+                self.root.after(0, lambda: self.progress_var.set("📋 Starting playlist download..."))
+                self.root.after(0, lambda: self.detail_progress_var.set(message))
+                return
+            
             if status == 'downloading':
                 # Extract progress information
                 downloaded = d.get('downloaded_bytes', 0)
@@ -697,8 +779,16 @@ This software is free and open source.
                 speed_str = self.format_bytes(speed) + "/s" if speed else "Unknown"
                 eta_str = f"{eta}s" if eta else "Unknown"
                 
-                progress_text = f"⬇️ Downloading {percentage:.1f}%"
-                detail_text = f"📦 {downloaded_str} of {total_str} • 🚀 {speed_str} • ⏱️ {eta_str} remaining"
+                # Check if this is part of a playlist download
+                playlist_stats = d.get('playlist_stats')
+                if playlist_stats:
+                    current_video = playlist_stats.get('downloaded', 0) + 1
+                    total_videos = playlist_stats.get('total_videos', 0)
+                    progress_text = f"📋 Playlist: Video {current_video}/{total_videos} • {percentage:.1f}%"
+                    detail_text = f"📦 {downloaded_str} of {total_str} • 🚀 {speed_str} • ⏱️ {eta_str} remaining"
+                else:
+                    progress_text = f"⬇️ Downloading {percentage:.1f}%"
+                    detail_text = f"📦 {downloaded_str} of {total_str} • 🚀 {speed_str} • ⏱️ {eta_str} remaining"
                 
                 # Update UI in main thread
                 self.root.after(0, lambda pt=progress_text: self.progress_var.set(pt))
@@ -770,12 +860,76 @@ This software is free and open source.
                 if self.download_cancelled:
                     return
                 
-                success = self.downloader.download_video(
-                    url,
-                    quality=self.quality_var.get(),
-                    audio_only=self.audio_only_var.get(),
-                    progress_callback=self.progress_hook
-                )
+                # Determine if it's a playlist or single video
+                if self.downloader._is_playlist_url(url):
+                    # Check if we have cached playlist info
+                    playlist_info_to_pass = None
+                    if hasattr(self, 'video_info') and self.video_info.get('is_playlist'):
+                        playlist_info_to_pass = self.video_info
+                        video_count = self.video_info.get('video_count', 0)
+                        estimated_time = self.video_info.get('estimated_time_minutes', 0)
+                        
+                        # Add extra time for audio downloads (more delays)
+                        if self.audio_only_var.get():
+                            estimated_time = int(estimated_time * 1.5)  # 50% longer for audio
+                        
+                        # Show detailed confirmation dialog with cached info
+                        confirm_msg = (
+                            f"You are about to download a playlist with {video_count} videos.\n\n"
+                            f"⏰ Estimated time: ~{estimated_time} minutes\n"
+                            f"⚠️  This will use 15-25 second delays between downloads for safety.\n"
+                        )
+                        
+                        if self.audio_only_var.get():
+                            confirm_msg += (
+                                f"\n🎵 AUDIO-ONLY DOWNLOAD:\n"
+                                f"   • YouTube is more restrictive with audio downloads\n"
+                                f"   • Uses even longer delays (20-35 seconds) for safety\n"
+                                f"   • Higher chance of temporary blocks\n"
+                            )
+                        
+                        confirm_msg += f"\nDo you want to continue?"
+                    else:
+                        # Show general confirmation dialog without specific details
+                        confirm_msg = (
+                            f"You are about to download a YouTube playlist.\n\n"
+                            f"⚠️  IMPORTANT: Playlist downloads use 15-25 second delays between videos for safety.\n"
+                            f"⏰ This may take considerable time depending on playlist size.\n\n"
+                        )
+                        
+                        if self.audio_only_var.get():
+                            confirm_msg += (
+                                f"🎵 AUDIO-ONLY WARNING:\n"
+                                f"   • Audio downloads use longer delays (20-35 seconds)\n"
+                                f"   • YouTube is more restrictive with audio extraction\n"
+                                f"   • Consider downloading as video if audio fails\n\n"
+                            )
+                        
+                        confirm_msg += (
+                            f"💡 Tip: Click 'Get Video Info' first to see playlist details and time estimates.\n\n"
+                            f"Do you want to continue?"
+                        )
+                    
+                    if not messagebox.askyesno("Confirm Playlist Download", confirm_msg):
+                        return
+                    
+                    # Download playlist
+                    result = self.downloader.download_playlist(
+                        url,
+                        quality=self.quality_var.get(),
+                        audio_only=self.audio_only_var.get(),
+                        progress_callback=self.progress_hook,
+                        playlist_info=playlist_info_to_pass
+                    )
+                    success = result.get('success', False)
+                else:
+                    # Download single video
+                    success = self.downloader.download_video(
+                        url,
+                        quality=self.quality_var.get(),
+                        audio_only=self.audio_only_var.get(),
+                        progress_callback=self.progress_hook
+                    )
                 
                 # Small delay to ensure post-processing is complete
                 if success and self.audio_only_var.get():
@@ -806,6 +960,15 @@ This software is free and open source.
             except VideoUnavailableError as e:
                 error_msg = f"The video is not available for download.\n\nPossible reasons:\n• Video is private or deleted\n• Geographic restrictions\n• Age restrictions\n\n{str(e)}"
                 self.root.after(0, lambda msg=error_msg: messagebox.showerror("Video Unavailable", msg))
+            except PlaylistTooLargeError as e:
+                error_msg = str(e)
+                self.root.after(0, lambda msg=error_msg: messagebox.showwarning("Large Playlist Warning", msg))
+            except PlaylistPrivateError as e:
+                error_msg = f"Playlist is private or unavailable:\n\n{str(e)}"
+                self.root.after(0, lambda msg=error_msg: messagebox.showerror("Playlist Unavailable", msg))
+            except PlaylistError as e:
+                error_msg = str(e)
+                self.root.after(0, lambda msg=error_msg: messagebox.showerror("Playlist Error", msg))
             except YouTubeDownloaderError as e:
                 error_msg = str(e)
                 self.root.after(0, lambda msg=error_msg: messagebox.showerror("Download Error", msg))

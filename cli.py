@@ -4,7 +4,8 @@ import sys
 import signal
 from downloader import (
     YouTubeDownloader, YouTubeDownloaderError, NetworkTimeoutError,
-    VideoUnavailableError, InvalidURLError
+    VideoUnavailableError, InvalidURLError, PlaylistError,
+    PlaylistTooLargeError, PlaylistPrivateError
 )
 
 def format_bytes(bytes_val):
@@ -75,6 +76,8 @@ def main():
                        help='Show video information only')
     parser.add_argument('-t', '--timeout', type=int, default=30,
                        help='Network timeout in seconds (default: 30)')
+    parser.add_argument('--playlist-range', type=str, metavar='START:END',
+                       help='Download only videos in range (e.g., 1:10 for first 10 videos)')
     
     args = parser.parse_args()
     
@@ -82,41 +85,110 @@ def main():
         downloader = YouTubeDownloader(args.output, timeout=args.timeout)
         
         if args.info:
-            print("🔍 Getting video information...")
+            print("🔍 Getting content information...")
             try:
-                info = downloader.get_video_info(args.url)
-                print(f"\n📹 Title: {info['title']}")
-                print(f"👤 Uploader: {info['uploader']}")
-                print(f"⏱️  Duration: {info['duration']} seconds")
-                print("\n📊 Available formats:")
-                for fmt in info['formats'][:10]:  # Show first 10 formats
-                    print(f"   • {fmt}")
-                if len(info['formats']) > 10:
-                    print(f"   ... and {len(info['formats']) - 10} more formats")
+                info = downloader.get_content_info(args.url)
+                
+                # Check if it's a playlist or single video
+                if info.get('is_playlist') or 'video_count' in info:
+                    print(f"\n📋 Playlist: {info['title']}")
+                    print(f"👤 Uploader: {info['uploader']}")
+                    print(f"📊 Videos: {info['video_count']} videos")
+                    print(f"⏰ Estimated time: ~{info['estimated_time_minutes']} minutes")
+                    print(f"\n⚠️  IMPORTANT: Downloads use 15-25 second delays for safety")
+                    print(f"📝 First few videos:")
+                    for i, entry in enumerate(info['entries'][:5], 1):
+                        title = entry.get('title', 'Unknown Title')
+                        if len(title) > 60:
+                            title = title[:57] + "..."
+                        print(f"   {i}. {title}")
+                    if len(info['entries']) > 5:
+                        print(f"   ... and {info['video_count'] - 5} more videos")
+                else:
+                    print(f"\n📹 Title: {info['title']}")
+                    print(f"👤 Uploader: {info['uploader']}")
+                    print(f"⏱️  Duration: {info['duration']} seconds")
+                    print("\n📊 Available formats:")
+                    for fmt in info['formats'][:10]:  # Show first 10 formats
+                        print(f"   • {fmt}")
+                    if len(info['formats']) > 10:
+                        print(f"   ... and {len(info['formats']) - 10} more formats")
             except Exception as e:
                 raise e
         else:
-            print(f"🚀 Starting download...")
-            print(f"🔗 URL: {args.url}")
-            print(f"🎯 Quality: {args.quality}")
-            print(f"🎵 Audio only: {args.audio_only}")
-            print(f"📁 Output directory: {args.output}")
-            print(f"⏰ Timeout: {args.timeout}s")
-            print("-" * 60)
+            # Parse playlist range if provided
+            video_range = None
+            if args.playlist_range:
+                try:
+                    start, end = map(int, args.playlist_range.split(':'))
+                    video_range = (start, end)
+                except ValueError:
+                    print("❌ Invalid playlist range format. Use START:END (e.g., 1:10)")
+                    sys.exit(1)
             
-            success = downloader.download_video(
-                args.url, 
-                quality=args.quality,
-                audio_only=args.audio_only,
-                progress_callback=progress_hook
-            )
-            
-            if success:
-                print("\n✅ Download completed successfully!")
-                print(f"📁 Files saved to: {args.output}")
+            # Check if it's a playlist or single video
+            if downloader._is_playlist_url(args.url):
+                print(f"🚀 Starting playlist download...")
+                print(f"🔗 URL: {args.url}")
+                print(f"🎯 Quality: {args.quality}")
+                print(f"🎵 Audio only: {args.audio_only}")
+                print(f"📁 Output directory: {args.output}")
+                print(f"⏰ Timeout: {args.timeout}s")
+                if video_range:
+                    print(f"📊 Range: Videos {video_range[0]} to {video_range[1]}")
+                print(f"⚠️  Using 15-25 second delays between downloads for safety")
+                print("-" * 60)
+                
+                # Get playlist info first to pass to download method
+                try:
+                    playlist_info = downloader.get_content_info(args.url)
+                    if not (playlist_info.get('is_playlist') or 'video_count' in playlist_info):
+                        playlist_info = None
+                except:
+                    playlist_info = None
+                
+                result = downloader.download_playlist(
+                    args.url,
+                    quality=args.quality,
+                    audio_only=args.audio_only,
+                    progress_callback=progress_hook,
+                    video_range=video_range,
+                    playlist_info=playlist_info
+                )
+                
+                if result['success']:
+                    print(f"\n✅ Playlist download completed!")
+                    print(f"📋 Playlist: {result['playlist_title']}")
+                    print(f"📊 Downloaded: {result['downloaded']}/{result['total_videos']} videos")
+                    if result['failed'] > 0:
+                        print(f"⚠️  Failed: {result['failed']} videos")
+                    print(f"⏱️  Total time: {result['total_time_seconds']} seconds")
+                    print(f"📁 Files saved to: {args.output}")
+                else:
+                    print("\n❌ Playlist download failed!")
+                    sys.exit(1)
             else:
-                print("\n❌ Download failed!")
-                sys.exit(1)
+                print(f"🚀 Starting download...")
+                print(f"🔗 URL: {args.url}")
+                print(f"🎯 Quality: {args.quality}")
+                print(f"🎵 Audio only: {args.audio_only}")
+                print(f"📁 Output directory: {args.output}")
+                print(f"⏰ Timeout: {args.timeout}s")
+                print("-" * 60)
+                
+                success = downloader.download_video(
+                    args.url, 
+                    quality=args.quality,
+                    audio_only=args.audio_only,
+                    progress_callback=progress_hook
+                )
+                
+                if success:
+                    print("\n✅ Download completed successfully!")
+                    print(f"📁 Files saved to: {args.output}")
+                else:
+                    print("\n❌ Download failed!")
+                    sys.exit(1)
                 
     except InvalidURLError as e:
         print(f"\n❌ Invalid URL: {e}")
@@ -137,6 +209,22 @@ def main():
         print("   • Geographic restrictions")
         print("   • Age restrictions")
         print("   • Copyright restrictions")
+        sys.exit(1)
+    except PlaylistTooLargeError as e:
+        print(f"\n⚠️  Large Playlist Warning: {e}")
+        print("\n💡 Recommendations:")
+        print("   • Use --playlist-range to download in smaller batches")
+        print("   • Example: --playlist-range 1:50 for first 50 videos")
+        sys.exit(1)
+    except PlaylistPrivateError as e:
+        print(f"\n🚫 Playlist Unavailable: {e}")
+        print("\n💡 Possible reasons:")
+        print("   • Playlist is private or deleted")
+        print("   • Geographic restrictions")
+        print("   • Requires authentication")
+        sys.exit(1)
+    except PlaylistError as e:
+        print(f"\n❌ Playlist Error: {e}")
         sys.exit(1)
     except YouTubeDownloaderError as e:
         error_msg = str(e)
