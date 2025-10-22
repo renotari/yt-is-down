@@ -14,8 +14,8 @@ class YouTubeDownloaderGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("🎬 YouTube Downloader")
-        self.root.geometry("700x550")
-        self.root.minsize(650, 500)
+        self.root.geometry("700x700")
+        self.root.minsize(650, 650)
         
         # Set modern colors and styling
         self.colors = {
@@ -243,18 +243,18 @@ This software is free and open source.
         messagebox.showinfo("🎬 About YouTube Downloader", about_text)
         
     def setup_ui(self):
-        # Main container with reduced padding
+        # Main container with minimal padding
         main_container = tk.Frame(self.root, bg=self.colors['bg'])
-        main_container.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
+        main_container.pack(fill=tk.BOTH, expand=True, padx=12, pady=6)
         
         # Header section
         header_frame = tk.Frame(main_container, bg=self.colors['bg'])
-        header_frame.pack(fill=tk.X, pady=(0, 10))
+        header_frame.pack(fill=tk.X, pady=(0, 6))
         
         # App title with icon
         title_label = tk.Label(header_frame, 
                               text="🎬 YouTube Downloader", 
-                              font=('Segoe UI', 16, 'bold'),
+                              font=('Segoe UI', 14, 'bold'),
                               fg=self.colors['dark'],
                               bg=self.colors['bg'])
         title_label.pack(side=tk.LEFT)
@@ -268,15 +268,15 @@ This software is free and open source.
         version_label.pack(side=tk.RIGHT, pady=(5, 0))
         
         # URL Input Card
-        url_card = ttk.Frame(main_container, style='Card.TFrame', padding=12)
-        url_card.pack(fill=tk.X, pady=(0, 8))
+        url_card = ttk.Frame(main_container, style='Card.TFrame', padding=8)
+        url_card.pack(fill=tk.X, pady=(0, 5))
         
         ttk.Label(url_card, text="📎 Video URL", style='Title.TLabel').pack(anchor=tk.W)
-        ttk.Label(url_card, text="Paste your YouTube video URL here", style='Subtitle.TLabel').pack(anchor=tk.W, pady=(0, 6))
+        ttk.Label(url_card, text="Paste your YouTube video URL here", style='Subtitle.TLabel').pack(anchor=tk.W, pady=(0, 4))
         
         # URL input with paste button
         url_input_frame = tk.Frame(url_card, bg='white')
-        url_input_frame.pack(fill=tk.X, pady=(0, 6))
+        url_input_frame.pack(fill=tk.X, pady=(0, 4))
         
         self.url_var = tk.StringVar()
         self.url_entry = ttk.Entry(url_input_frame, textvariable=self.url_var, 
@@ -331,20 +331,20 @@ This software is free and open source.
         tip_label = ttk.Label(url_card, 
                              text="💡 Tip: Copy a YouTube URL and the paste button will light up automatically!",
                              style='Subtitle.TLabel')
-        tip_label.pack(anchor=tk.W, pady=(6, 0))
+        tip_label.pack(anchor=tk.W, pady=(4, 0))
         
         # Video Info Card
-        self.info_card = ttk.Frame(main_container, style='Card.TFrame', padding=12)
-        self.info_card.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
+        self.info_card = ttk.Frame(main_container, style='Card.TFrame', padding=8)
+        self.info_card.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
         
         ttk.Label(self.info_card, text="📹 Video Information", style='Title.TLabel').pack(anchor=tk.W)
         
         # Info display with modern styling
         info_display_frame = tk.Frame(self.info_card, bg='white')
-        info_display_frame.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
+        info_display_frame.pack(fill=tk.BOTH, expand=True, pady=(4, 0))
         
         self.info_text = tk.Text(info_display_frame, 
-                                height=5, 
+                                height=4, 
                                 font=('Segoe UI', 10),
                                 bg='#f8f9fa',
                                 fg=self.colors['dark'],
@@ -361,32 +361,30 @@ This software is free and open source.
         info_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Download Options Card
-        options_card = ttk.Frame(main_container, style='Card.TFrame', padding=12)
-        options_card.pack(fill=tk.X, pady=(0, 8))
+        options_card = ttk.Frame(main_container, style='Card.TFrame', padding=8)
+        options_card.pack(fill=tk.X, pady=(0, 5))
         
-        ttk.Label(options_card, text="⚙️ Download Options", style='Title.TLabel').pack(anchor=tk.W, pady=(0, 8))
+        ttk.Label(options_card, text="⚙️ Download Options", style='Title.TLabel').pack(anchor=tk.W, pady=(0, 5))
         
         # Options grid
         options_grid = tk.Frame(options_card, bg='white')
         options_grid.pack(fill=tk.X)
         
-        # Quality selection
-        quality_frame = tk.Frame(options_grid, bg='white')
-        quality_frame.pack(fill=tk.X, pady=(0, 8))
+        # Quality and Audio options on same line
+        quality_audio_frame = tk.Frame(options_grid, bg='white')
+        quality_audio_frame.pack(fill=tk.X, pady=(0, 5))
         
-        ttk.Label(quality_frame, text="🎯 Quality:", font=('Segoe UI', 10, 'bold'), background='white').pack(side=tk.LEFT)
+        # Quality selection (left side)
+        ttk.Label(quality_audio_frame, text="🎯 Quality:", font=('Segoe UI', 10, 'bold'), background='white').pack(side=tk.LEFT)
         self.quality_var = tk.StringVar(value="best")
-        self.quality_combo = ttk.Combobox(quality_frame, textvariable=self.quality_var, 
+        self.quality_combo = ttk.Combobox(quality_audio_frame, textvariable=self.quality_var, 
                                          values=["best", "worst"], state="readonly", 
-                                         style='Modern.TCombobox', width=25)
-        self.quality_combo.pack(side=tk.LEFT, padx=(10, 0))
+                                         style='Modern.TCombobox', width=20)
+        self.quality_combo.pack(side=tk.LEFT, padx=(8, 20))
         
-        # Audio only option
-        audio_frame = tk.Frame(options_grid, bg='white')
-        audio_frame.pack(fill=tk.X, pady=(0, 8))
-        
+        # Audio only option (right side)
         self.audio_only_var = tk.BooleanVar()
-        audio_check = tk.Checkbutton(audio_frame, 
+        audio_check = tk.Checkbutton(quality_audio_frame, 
                                     text="🎵 Audio Only (MP3)", 
                                     variable=self.audio_only_var,
                                     bg='white',
@@ -406,7 +404,7 @@ This software is free and open source.
         ttk.Label(output_frame, text="📁 Save to:", font=('Segoe UI', 10, 'bold'), background='white').pack(anchor=tk.W)
         
         output_input_frame = tk.Frame(output_frame, bg='white')
-        output_input_frame.pack(fill=tk.X, pady=(3, 0))
+        output_input_frame.pack(fill=tk.X, pady=(2, 0))
         
         self.output_var = tk.StringVar(value="downloads")
         output_entry = ttk.Entry(output_input_frame, textvariable=self.output_var, 
@@ -430,43 +428,43 @@ This software is free and open source.
         browse_btn.pack(side=tk.RIGHT)
         
         # Progress Card
-        progress_card = ttk.Frame(main_container, style='Card.TFrame', padding=12)
-        progress_card.pack(fill=tk.X, pady=(0, 8))
+        progress_card = ttk.Frame(main_container, style='Card.TFrame', padding=8)
+        progress_card.pack(fill=tk.X, pady=(0, 5))
         
         ttk.Label(progress_card, text="📊 Progress", style='Title.TLabel').pack(anchor=tk.W)
         
         # Status labels
         self.progress_var = tk.StringVar(value="Ready to download")
         status_label = ttk.Label(progress_card, textvariable=self.progress_var, style='Status.TLabel')
-        status_label.pack(anchor=tk.W, pady=(6, 3))
+        status_label.pack(anchor=tk.W, pady=(4, 2))
         
         self.detail_progress_var = tk.StringVar(value="")
         detail_label = ttk.Label(progress_card, textvariable=self.detail_progress_var, 
                                font=('Consolas', 8), background='white', foreground=self.colors['muted'])
-        detail_label.pack(anchor=tk.W, pady=(0, 6))
+        detail_label.pack(anchor=tk.W, pady=(0, 4))
         
         # Modern progress bar
         self.progress_bar = ttk.Progressbar(progress_card, mode='determinate', maximum=100,
                                           style='Modern.Horizontal.TProgressbar', length=400)
-        self.progress_bar.pack(fill=tk.X, pady=(0, 8))
+        self.progress_bar.pack(fill=tk.X, pady=(0, 6))
         
         # Action buttons with fallback styling
         button_frame = tk.Frame(progress_card, bg='white')
         button_frame.pack(fill=tk.X)
         
-        # Use tk.Button with better visibility
+        # Use tk.Button with consistent blue theme
         self.download_btn = tk.Button(button_frame, 
                                      text="⬇️ Download", 
                                      command=self.start_download,
-                                     bg='#ff0000',  # Explicit red color
+                                     bg='#065fd4',  # Blue color to match other buttons
                                      fg='white',
-                                     font=('Segoe UI', 11, 'bold'),
+                                     font=('Segoe UI', 10, 'bold'),
                                      relief='raised',
                                      borderwidth=2,
-                                     padx=20,
-                                     pady=8,
+                                     padx=18,
+                                     pady=6,
                                      cursor='hand2',
-                                     activebackground='#cc0000',
+                                     activebackground='#0056b3',
                                      activeforeground='white',
                                      highlightthickness=0)
         self.download_btn.pack(side=tk.LEFT, padx=(0, 15))
@@ -474,16 +472,16 @@ This software is free and open source.
         self.cancel_btn = tk.Button(button_frame, 
                                    text="❌ Cancel", 
                                    command=self.cancel_download,
-                                   bg='#ff4444',  # Explicit red color
+                                   bg='#6c757d',  # Gray color for cancel
                                    fg='white',
-                                   font=('Segoe UI', 10, 'bold'),
+                                   font=('Segoe UI', 9, 'bold'),
                                    relief='raised',
                                    borderwidth=2,
-                                   padx=15,
-                                   pady=6,
+                                   padx=12,
+                                   pady=5,
                                    cursor='hand2',
                                    state=tk.DISABLED,
-                                   activebackground='#c53030',
+                                   activebackground='#5a6268',
                                    activeforeground='white',
                                    highlightthickness=0)
         self.cancel_btn.pack(side=tk.LEFT)
