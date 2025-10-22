@@ -13,118 +13,501 @@ from pathlib import Path
 class YouTubeDownloaderGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("YouTube Downloader")
-        self.root.geometry("600x500")
+        self.root.title("🎬 YouTube Downloader")
+        self.root.geometry("700x550")
+        self.root.minsize(650, 500)
+        
+        # Set modern colors and styling
+        self.colors = {
+            'bg': '#f0f0f0',
+            'primary': '#ff0000',  # YouTube red
+            'primary_dark': '#cc0000',
+            'secondary': '#065fd4',  # YouTube blue
+            'success': '#00c851',
+            'warning': '#ffbb33',
+            'danger': '#ff4444',
+            'dark': '#212529',
+            'light': '#ffffff',
+            'muted': '#6c757d'
+        }
+        
+        self.root.configure(bg=self.colors['bg'])
+        
+        # Try to set a nice icon (will fail gracefully if not available)
+        try:
+            self.root.iconbitmap(default='youtube.ico')
+        except:
+            pass
         
         self.downloader = YouTubeDownloader(timeout=30)
         self.video_info = None
         self.download_cancelled = False
         
+        self.setup_styles()
+        self.setup_menu()
         self.setup_ui()
         self.check_clipboard()  # Start clipboard monitoring
+    
+    def setup_styles(self):
+        """Configure modern ttk styles"""
+        style = ttk.Style()
+        
+        # Use a theme that works better with custom colors
+        try:
+            style.theme_use('clam')  # More customizable than default
+        except:
+            pass
+        
+        # Configure modern button styles with better contrast
+        style.configure('Primary.TButton',
+                       background=self.colors['primary'],
+                       foreground='white',
+                       borderwidth=1,
+                       relief='solid',
+                       focuscolor='none',
+                       padding=(20, 10),
+                       font=('Segoe UI', 10, 'bold'))
+        style.map('Primary.TButton',
+                 background=[('active', self.colors['primary_dark']),
+                           ('pressed', self.colors['primary_dark'])],
+                 foreground=[('active', 'white'), ('pressed', 'white')])
+        
+        style.configure('Secondary.TButton',
+                       background=self.colors['secondary'],
+                       foreground='white',
+                       borderwidth=1,
+                       relief='solid',
+                       focuscolor='none',
+                       padding=(15, 8),
+                       font=('Segoe UI', 9, 'bold'))
+        style.map('Secondary.TButton',
+                 background=[('active', '#0056b3'), ('pressed', '#004085')],
+                 foreground=[('active', 'white'), ('pressed', 'white')])
+        
+        style.configure('Success.TButton',
+                       background=self.colors['success'],
+                       foreground='white',
+                       borderwidth=1,
+                       relief='solid',
+                       focuscolor='none',
+                       padding=(15, 8),
+                       font=('Segoe UI', 9, 'bold'))
+        style.map('Success.TButton',
+                 background=[('active', '#00a041'), ('pressed', '#007c32')],
+                 foreground=[('active', 'white'), ('pressed', 'white')])
+        
+        style.configure('Danger.TButton',
+                       background=self.colors['danger'],
+                       foreground='white',
+                       borderwidth=1,
+                       relief='solid',
+                       focuscolor='none',
+                       padding=(15, 8),
+                       font=('Segoe UI', 9, 'bold'))
+        style.map('Danger.TButton',
+                 background=[('active', '#e53e3e'), ('pressed', '#c53030')],
+                 foreground=[('active', 'white'), ('pressed', 'white')])
+        
+        # Configure entry styles
+        style.configure('Modern.TEntry',
+                       fieldbackground='white',
+                       foreground='black',
+                       borderwidth=2,
+                       relief='solid',
+                       insertcolor='black',
+                       padding=(10, 8),
+                       font=('Segoe UI', 10))
+        
+        # Configure frame styles
+        style.configure('Card.TFrame',
+                       background='white',
+                       relief='solid',
+                       borderwidth=1)
+        
+        # Configure label styles
+        style.configure('Title.TLabel',
+                       background='white',
+                       foreground=self.colors['dark'],
+                       font=('Segoe UI', 12, 'bold'))
+        
+        style.configure('Subtitle.TLabel',
+                       background='white',
+                       foreground=self.colors['muted'],
+                       font=('Segoe UI', 9))
+        
+        style.configure('Status.TLabel',
+                       background='white',
+                       foreground=self.colors['dark'],
+                       font=('Segoe UI', 10, 'bold'))
+        
+        # Configure checkbox styles for better visibility
+        style.configure('Modern.TCheckbutton',
+                       background='white',
+                       foreground=self.colors['dark'],
+                       focuscolor='none',
+                       font=('Segoe UI', 10))
+        style.map('Modern.TCheckbutton',
+                 background=[('active', 'white')],
+                 foreground=[('active', self.colors['dark'])])
+        
+        # Configure combobox styles
+        style.configure('Modern.TCombobox',
+                       fieldbackground='white',
+                       background='white',
+                       foreground='black',
+                       borderwidth=2,
+                       relief='solid',
+                       font=('Segoe UI', 10))
+        
+        # Configure progress bar
+        style.configure('Modern.Horizontal.TProgressbar',
+                       background=self.colors['primary'],
+                       troughcolor='#e9ecef',
+                       borderwidth=0,
+                       lightcolor=self.colors['primary'],
+                       darkcolor=self.colors['primary'])
+    
+    def setup_menu(self):
+        """Setup application menu"""
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+        
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Clear URL", command=lambda: self.url_var.set(""))
+        file_menu.add_command(label="Open Downloads Folder", command=self.open_downloads_folder)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.root.quit)
+        
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="Keyboard Shortcuts", command=self.show_shortcuts)
+        help_menu.add_command(label="About", command=self.show_about)
+    
+    def open_downloads_folder(self):
+        """Open the downloads folder in file explorer"""
+        import subprocess
+        import platform
+        
+        folder_path = self.output_var.get()
+        try:
+            if platform.system() == "Windows":
+                os.startfile(folder_path)
+            elif platform.system() == "Darwin":  # macOS
+                subprocess.run(["open", folder_path])
+            else:  # Linux
+                subprocess.run(["xdg-open", folder_path])
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open folder:\n{str(e)}")
+    
+    def show_shortcuts(self):
+        """Show keyboard shortcuts dialog"""
+        shortcuts_text = """🎹 Keyboard Shortcuts:
+
+⌨️ Ctrl+Shift+V - Paste and validate URL
+⌨️ Enter (in URL field) - Get video info
+⌨️ Ctrl+Q - Quit application
+
+💡 Tips:
+• Copy any YouTube URL and the paste button will highlight
+• Press Enter after pasting a URL to quickly get video info
+• Use the Browse button to select a custom download folder"""
+        
+        messagebox.showinfo("🎹 Keyboard Shortcuts", shortcuts_text)
+    
+    def show_about(self):
+        """Show about dialog"""
+        about_text = """🎬 YouTube Downloader v2.0
+
+A modern, user-friendly YouTube video downloader built with Python.
+
+✨ Features:
+• Download videos in multiple qualities
+• Extract audio as MP3 files
+• Smart clipboard integration
+• Real-time progress tracking
+• Comprehensive error handling
+
+🛠️ Built with:
+• Python 3.7+
+• tkinter (GUI)
+• yt-dlp (Download engine)
+
+💝 Open Source
+This software is free and open source.
+
+🎯 Made for easy YouTube downloading!"""
+        
+        messagebox.showinfo("🎬 About YouTube Downloader", about_text)
         
     def setup_ui(self):
-        # Main frame
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Main container with reduced padding
+        main_container = tk.Frame(self.root, bg=self.colors['bg'])
+        main_container.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
         
-        # URL input
-        url_label_frame = ttk.Frame(main_frame)
-        url_label_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 5))
+        # Header section
+        header_frame = tk.Frame(main_container, bg=self.colors['bg'])
+        header_frame.pack(fill=tk.X, pady=(0, 10))
         
-        ttk.Label(url_label_frame, text="YouTube URL:").grid(row=0, column=0, sticky=tk.W)
-        ttk.Label(url_label_frame, text="(Tip: Copy a YouTube URL and click Paste, or press Ctrl+Shift+V)", 
-                 font=("TkDefaultFont", 8), foreground="gray").grid(row=0, column=1, sticky=tk.W, padx=(10, 0))
+        # App title with icon
+        title_label = tk.Label(header_frame, 
+                              text="🎬 YouTube Downloader", 
+                              font=('Segoe UI', 16, 'bold'),
+                              fg=self.colors['dark'],
+                              bg=self.colors['bg'])
+        title_label.pack(side=tk.LEFT)
         
-        # URL input frame with entry and paste button
-        url_frame = ttk.Frame(main_frame)
-        url_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        # Version label
+        version_label = tk.Label(header_frame,
+                               text="v2.0",
+                               font=('Segoe UI', 10),
+                               fg=self.colors['muted'],
+                               bg=self.colors['bg'])
+        version_label.pack(side=tk.RIGHT, pady=(5, 0))
+        
+        # URL Input Card
+        url_card = ttk.Frame(main_container, style='Card.TFrame', padding=12)
+        url_card.pack(fill=tk.X, pady=(0, 8))
+        
+        ttk.Label(url_card, text="📎 Video URL", style='Title.TLabel').pack(anchor=tk.W)
+        ttk.Label(url_card, text="Paste your YouTube video URL here", style='Subtitle.TLabel').pack(anchor=tk.W, pady=(0, 6))
+        
+        # URL input with paste button
+        url_input_frame = tk.Frame(url_card, bg='white')
+        url_input_frame.pack(fill=tk.X, pady=(0, 6))
         
         self.url_var = tk.StringVar()
-        self.url_entry = ttk.Entry(url_frame, textvariable=self.url_var, width=50)
-        self.url_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        self.url_entry = ttk.Entry(url_input_frame, textvariable=self.url_var, 
+                                  style='Modern.TEntry', font=('Segoe UI', 11))
+        self.url_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
         
-        # Bind Ctrl+Shift+V to paste and validate (Ctrl+V is default paste)
+        self.paste_btn = tk.Button(url_input_frame, 
+                                  text="📋 Paste", 
+                                  command=self.paste_from_clipboard,
+                                  bg='#065fd4',  # Explicit blue color
+                                  fg='white',
+                                  font=('Segoe UI', 10, 'bold'),
+                                  relief='raised',
+                                  borderwidth=2,
+                                  padx=15,
+                                  pady=8,
+                                  cursor='hand2',
+                                  activebackground='#0056b3',
+                                  activeforeground='white',
+                                  highlightthickness=0)
+        self.paste_btn.pack(side=tk.RIGHT)
+        
+        # Bind keyboard shortcuts
         self.url_entry.bind('<Control-Shift-V>', lambda e: self.paste_from_clipboard())
+        self.url_entry.bind('<Return>', lambda e: self.get_video_info())
         
-        self.paste_btn = ttk.Button(url_frame, text="📋 Paste", command=self.paste_from_clipboard, width=8)
-        self.paste_btn.grid(row=0, column=1)
+        # Global keyboard shortcuts
+        self.root.bind('<Control-q>', lambda e: self.root.quit())
+        self.root.bind('<F1>', lambda e: self.show_shortcuts())
         
-        # Configure url_frame grid weights
-        url_frame.columnconfigure(0, weight=1)
+        # Action buttons frame
+        action_frame = tk.Frame(url_card, bg='white')
+        action_frame.pack(fill=tk.X)
         
-        # Get info button
-        ttk.Button(main_frame, text="Get Video Info", 
-                  command=self.get_video_info).grid(row=2, column=0, sticky=tk.W, pady=(0, 10))
+        self.info_btn = tk.Button(action_frame, 
+                                 text="🔍 Get Video Info", 
+                                 command=self.get_video_info,
+                                 bg='#065fd4',  # Explicit blue color
+                                 fg='white',
+                                 font=('Segoe UI', 10, 'bold'),
+                                 relief='raised',
+                                 borderwidth=2,
+                                 padx=15,
+                                 pady=8,
+                                 cursor='hand2',
+                                 activebackground='#0056b3',
+                                 activeforeground='white',
+                                 highlightthickness=0)
+        self.info_btn.pack(side=tk.LEFT)
         
-        # Video info display
-        info_frame = ttk.LabelFrame(main_frame, text="Video Information", padding="5")
-        info_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        # Tip label
+        tip_label = ttk.Label(url_card, 
+                             text="💡 Tip: Copy a YouTube URL and the paste button will light up automatically!",
+                             style='Subtitle.TLabel')
+        tip_label.pack(anchor=tk.W, pady=(6, 0))
         
-        self.info_text = tk.Text(info_frame, height=6, width=70, state=tk.DISABLED)
-        info_scrollbar = ttk.Scrollbar(info_frame, orient=tk.VERTICAL, command=self.info_text.yview)
+        # Video Info Card
+        self.info_card = ttk.Frame(main_container, style='Card.TFrame', padding=12)
+        self.info_card.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
+        
+        ttk.Label(self.info_card, text="📹 Video Information", style='Title.TLabel').pack(anchor=tk.W)
+        
+        # Info display with modern styling
+        info_display_frame = tk.Frame(self.info_card, bg='white')
+        info_display_frame.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
+        
+        self.info_text = tk.Text(info_display_frame, 
+                                height=5, 
+                                font=('Segoe UI', 10),
+                                bg='#f8f9fa',
+                                fg=self.colors['dark'],
+                                border=0,
+                                padx=15,
+                                pady=15,
+                                state=tk.DISABLED,
+                                wrap=tk.WORD)
+        
+        info_scrollbar = ttk.Scrollbar(info_display_frame, orient=tk.VERTICAL, command=self.info_text.yview)
         self.info_text.configure(yscrollcommand=info_scrollbar.set)
-        self.info_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        info_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
-        # Download options
-        options_frame = ttk.LabelFrame(main_frame, text="Download Options", padding="5")
-        options_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.info_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        info_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Download Options Card
+        options_card = ttk.Frame(main_container, style='Card.TFrame', padding=12)
+        options_card.pack(fill=tk.X, pady=(0, 8))
+        
+        ttk.Label(options_card, text="⚙️ Download Options", style='Title.TLabel').pack(anchor=tk.W, pady=(0, 8))
+        
+        # Options grid
+        options_grid = tk.Frame(options_card, bg='white')
+        options_grid.pack(fill=tk.X)
         
         # Quality selection
-        ttk.Label(options_frame, text="Quality:").grid(row=0, column=0, sticky=tk.W)
-        self.quality_var = tk.StringVar(value="best")
-        self.quality_combo = ttk.Combobox(options_frame, textvariable=self.quality_var, 
-                                         values=["best", "worst"], state="readonly", width=20)
-        self.quality_combo.grid(row=0, column=1, sticky=tk.W, padx=(5, 0))
+        quality_frame = tk.Frame(options_grid, bg='white')
+        quality_frame.pack(fill=tk.X, pady=(0, 8))
         
-        # Audio only checkbox
+        ttk.Label(quality_frame, text="🎯 Quality:", font=('Segoe UI', 10, 'bold'), background='white').pack(side=tk.LEFT)
+        self.quality_var = tk.StringVar(value="best")
+        self.quality_combo = ttk.Combobox(quality_frame, textvariable=self.quality_var, 
+                                         values=["best", "worst"], state="readonly", 
+                                         style='Modern.TCombobox', width=25)
+        self.quality_combo.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Audio only option
+        audio_frame = tk.Frame(options_grid, bg='white')
+        audio_frame.pack(fill=tk.X, pady=(0, 8))
+        
         self.audio_only_var = tk.BooleanVar()
-        ttk.Checkbutton(options_frame, text="Audio Only (MP3)", 
-                       variable=self.audio_only_var).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        audio_check = tk.Checkbutton(audio_frame, 
+                                    text="🎵 Audio Only (MP3)", 
+                                    variable=self.audio_only_var,
+                                    bg='white',
+                                    fg=self.colors['dark'],
+                                    font=('Segoe UI', 10),
+                                    activebackground='white',
+                                    activeforeground=self.colors['dark'],
+                                    selectcolor='white',
+                                    relief='flat',
+                                    borderwidth=0)
+        audio_check.pack(side=tk.LEFT)
         
         # Output directory
-        ttk.Label(options_frame, text="Output Directory:").grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
+        output_frame = tk.Frame(options_grid, bg='white')
+        output_frame.pack(fill=tk.X)
+        
+        ttk.Label(output_frame, text="📁 Save to:", font=('Segoe UI', 10, 'bold'), background='white').pack(anchor=tk.W)
+        
+        output_input_frame = tk.Frame(output_frame, bg='white')
+        output_input_frame.pack(fill=tk.X, pady=(3, 0))
+        
         self.output_var = tk.StringVar(value="downloads")
-        output_frame = ttk.Frame(options_frame)
-        output_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(5, 0))
+        output_entry = ttk.Entry(output_input_frame, textvariable=self.output_var, 
+                               style='Modern.TEntry', font=('Segoe UI', 10))
+        output_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
         
-        ttk.Entry(output_frame, textvariable=self.output_var, width=40).grid(row=0, column=0, sticky=(tk.W, tk.E))
-        ttk.Button(output_frame, text="Browse", 
-                  command=self.browse_output_dir).grid(row=0, column=1, padx=(5, 0))
+        browse_btn = tk.Button(output_input_frame, 
+                              text="📂 Browse", 
+                              command=self.browse_output_dir,
+                              bg='#065fd4',  # Explicit blue color
+                              fg='white',
+                              font=('Segoe UI', 10, 'bold'),
+                              relief='raised',
+                              borderwidth=2,
+                              padx=15,
+                              pady=8,
+                              cursor='hand2',
+                              activebackground='#0056b3',
+                              activeforeground='white',
+                              highlightthickness=0)
+        browse_btn.pack(side=tk.RIGHT)
         
-        # Progress information
-        self.progress_var = tk.StringVar(value="Ready")
-        ttk.Label(main_frame, textvariable=self.progress_var).grid(row=5, column=0, sticky=tk.W, pady=(10, 5))
+        # Progress Card
+        progress_card = ttk.Frame(main_container, style='Card.TFrame', padding=12)
+        progress_card.pack(fill=tk.X, pady=(0, 8))
         
-        # Detailed progress info
+        ttk.Label(progress_card, text="📊 Progress", style='Title.TLabel').pack(anchor=tk.W)
+        
+        # Status labels
+        self.progress_var = tk.StringVar(value="Ready to download")
+        status_label = ttk.Label(progress_card, textvariable=self.progress_var, style='Status.TLabel')
+        status_label.pack(anchor=tk.W, pady=(6, 3))
+        
         self.detail_progress_var = tk.StringVar(value="")
-        ttk.Label(main_frame, textvariable=self.detail_progress_var, font=("Consolas", 9)).grid(row=6, column=0, sticky=tk.W, pady=(0, 5))
+        detail_label = ttk.Label(progress_card, textvariable=self.detail_progress_var, 
+                               font=('Consolas', 8), background='white', foreground=self.colors['muted'])
+        detail_label.pack(anchor=tk.W, pady=(0, 6))
         
-        # Progress bar (determinate mode for actual percentage)
-        self.progress_bar = ttk.Progressbar(main_frame, mode='determinate', maximum=100)
-        self.progress_bar.grid(row=7, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        # Modern progress bar
+        self.progress_bar = ttk.Progressbar(progress_card, mode='determinate', maximum=100,
+                                          style='Modern.Horizontal.TProgressbar', length=400)
+        self.progress_bar.pack(fill=tk.X, pady=(0, 8))
         
-        # Download/Cancel button frame
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=8, column=0, columnspan=2, pady=(0, 10))
+        # Action buttons with fallback styling
+        button_frame = tk.Frame(progress_card, bg='white')
+        button_frame.pack(fill=tk.X)
         
-        self.download_btn = ttk.Button(button_frame, text="Download", 
-                                      command=self.start_download, style="Accent.TButton")
-        self.download_btn.grid(row=0, column=0, padx=(0, 5))
+        # Use tk.Button with better visibility
+        self.download_btn = tk.Button(button_frame, 
+                                     text="⬇️ Download", 
+                                     command=self.start_download,
+                                     bg='#ff0000',  # Explicit red color
+                                     fg='white',
+                                     font=('Segoe UI', 11, 'bold'),
+                                     relief='raised',
+                                     borderwidth=2,
+                                     padx=20,
+                                     pady=8,
+                                     cursor='hand2',
+                                     activebackground='#cc0000',
+                                     activeforeground='white',
+                                     highlightthickness=0)
+        self.download_btn.pack(side=tk.LEFT, padx=(0, 15))
         
-        self.cancel_btn = ttk.Button(button_frame, text="Cancel", 
-                                    command=self.cancel_download, state=tk.DISABLED)
-        self.cancel_btn.grid(row=0, column=1)
+        self.cancel_btn = tk.Button(button_frame, 
+                                   text="❌ Cancel", 
+                                   command=self.cancel_download,
+                                   bg='#ff4444',  # Explicit red color
+                                   fg='white',
+                                   font=('Segoe UI', 10, 'bold'),
+                                   relief='raised',
+                                   borderwidth=2,
+                                   padx=15,
+                                   pady=6,
+                                   cursor='hand2',
+                                   state=tk.DISABLED,
+                                   activebackground='#c53030',
+                                   activeforeground='white',
+                                   highlightthickness=0)
+        self.cancel_btn.pack(side=tk.LEFT)
         
-        # Configure grid weights
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(0, weight=1)
-        url_frame.columnconfigure(0, weight=1)
-        info_frame.columnconfigure(0, weight=1)
-        options_frame.columnconfigure(1, weight=1)
-        output_frame.columnconfigure(0, weight=1)
+        # Status bar at bottom
+        status_bar = tk.Frame(self.root, bg=self.colors['muted'], height=25)
+        status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        self.status_var = tk.StringVar(value="Ready • Press F1 for shortcuts")
+        status_label = tk.Label(status_bar, textvariable=self.status_var, 
+                               bg=self.colors['muted'], fg='white', 
+                               font=('Segoe UI', 9), anchor=tk.W)
+        status_label.pack(side=tk.LEFT, padx=10, pady=2)
+        
+        # Version info on right side of status bar
+        version_status = tk.Label(status_bar, text="v2.0", 
+                                 bg=self.colors['muted'], fg='white', 
+                                 font=('Segoe UI', 9))
+        version_status.pack(side=tk.RIGHT, padx=10, pady=2)
+        
+        # Configure grid weights for responsiveness
+        main_container.columnconfigure(0, weight=1)
+        url_input_frame.columnconfigure(0, weight=1)
+        output_input_frame.columnconfigure(0, weight=1)
         
     def get_video_info(self):
         url = self.url_var.get().strip()
@@ -134,7 +517,7 @@ class YouTubeDownloaderGUI:
             
         def fetch_info():
             try:
-                self.progress_var.set("Getting video information...")
+                self.progress_var.set("🔍 Getting video information...")
                 self.progress_bar.start()
                 
                 self.video_info = self.downloader.get_video_info(url)
@@ -159,22 +542,44 @@ class YouTubeDownloaderGUI:
                 self.root.after(0, lambda msg=error_msg: messagebox.showerror("Unexpected Error", msg))
             finally:
                 self.root.after(0, lambda: self.progress_bar.stop())
-                self.root.after(0, lambda: self.progress_var.set("Ready"))
+                self.root.after(0, lambda: self.progress_var.set("✨ Ready to download"))
         
         threading.Thread(target=fetch_info, daemon=True).start()
     
     def display_video_info(self):
         if not self.video_info:
             return
-            
-        info_text = f"Title: {self.video_info['title']}\n"
-        info_text += f"Uploader: {self.video_info['uploader']}\n"
-        info_text += f"Duration: {self.video_info['duration']} seconds\n\n"
-        info_text += "Available formats:\n"
         
-        formats = ["best", "worst"] + self.video_info['formats'][:8]  # Limit to 8 formats
-        for fmt in self.video_info['formats'][:8]:
-            info_text += f"  - {fmt}\n"
+        # Format duration nicely
+        duration = self.video_info['duration']
+        if duration > 0:
+            minutes, seconds = divmod(duration, 60)
+            hours, minutes = divmod(minutes, 60)
+            if hours > 0:
+                duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+            else:
+                duration_str = f"{minutes:02d}:{seconds:02d}"
+        else:
+            duration_str = "Unknown"
+        
+        # Create nicely formatted info text
+        info_text = f"🎬 Title: {self.video_info['title']}\n\n"
+        info_text += f"👤 Uploader: {self.video_info['uploader']}\n\n"
+        info_text += f"⏱️ Duration: {duration_str}\n\n"
+        
+        if self.video_info['formats']:
+            info_text += "📊 Available Quality Options:\n"
+            formats = ["best", "worst"] + self.video_info['formats'][:8]  # Limit to 8 formats
+            for i, fmt in enumerate(self.video_info['formats'][:8], 1):
+                info_text += f"   {i}. {fmt}\n"
+            
+            if len(self.video_info['formats']) > 8:
+                info_text += f"   ... and {len(self.video_info['formats']) - 8} more options\n"
+        else:
+            info_text += "📊 Quality: Standard formats available\n"
+            formats = ["best", "worst"]
+        
+        info_text += "\n✅ Video information loaded successfully!"
         
         self.info_text.config(state=tk.NORMAL)
         self.info_text.delete(1.0, tk.END)
@@ -205,13 +610,14 @@ class YouTubeDownloaderGUI:
                 self.url_entry.focus()
                 
                 # Visual feedback - briefly change button color
-                original_style = self.paste_btn.cget('style')
-                self.paste_btn.configure(text="✅ Pasted")
-                self.root.after(1500, lambda: self.paste_btn.configure(text="📋 Paste"))
+                self.paste_btn.configure(text="✅ Pasted", bg='#00c851')  # Green
+                self.root.after(1500, lambda: self.paste_btn.configure(text="📋 Paste", bg='#065fd4'))  # Blue
                 
                 # Show success message in status
-                self.progress_var.set("Valid YouTube URL pasted!")
-                self.root.after(3000, lambda: self.progress_var.set("Ready"))
+                self.progress_var.set("✅ Valid YouTube URL pasted!")
+                self.status_var.set("✅ Valid YouTube URL detected and pasted")
+                self.root.after(3000, lambda: self.progress_var.set("✨ Ready to download"))
+                self.root.after(3000, lambda: self.status_var.set("Ready • Press F1 for shortcuts"))
                 
             else:
                 # Check if it looks like a URL but not YouTube
@@ -244,15 +650,15 @@ class YouTubeDownloaderGUI:
             if clipboard_content and self.downloader._is_valid_url(clipboard_content):
                 # Clipboard contains valid YouTube URL
                 if self.paste_btn.cget('text') == '📋 Paste':
-                    self.paste_btn.configure(text='📋 Paste URL', style='Accent.TButton')
+                    self.paste_btn.configure(text='📋 Paste URL', bg='#00c851')  # Green
             else:
                 # No valid YouTube URL in clipboard
                 if 'URL' in self.paste_btn.cget('text'):
-                    self.paste_btn.configure(text='📋 Paste', style='')
+                    self.paste_btn.configure(text='📋 Paste', bg='#065fd4')  # Blue
         except (tk.TclError, Exception):
             # Clipboard error or empty - reset button
             if 'URL' in self.paste_btn.cget('text'):
-                self.paste_btn.configure(text='📋 Paste', style='')
+                self.paste_btn.configure(text='📋 Paste', bg='#065fd4')  # Blue
         
         # Check again in 2 seconds
         self.root.after(2000, self.check_clipboard)
@@ -293,8 +699,8 @@ class YouTubeDownloaderGUI:
                 speed_str = self.format_bytes(speed) + "/s" if speed else "Unknown"
                 eta_str = f"{eta}s" if eta else "Unknown"
                 
-                progress_text = f"Downloading... {percentage:.1f}%"
-                detail_text = f"{downloaded_str} / {total_str} | Speed: {speed_str} | ETA: {eta_str}"
+                progress_text = f"⬇️ Downloading {percentage:.1f}%"
+                detail_text = f"📦 {downloaded_str} of {total_str} • 🚀 {speed_str} • ⏱️ {eta_str} remaining"
                 
                 # Update UI in main thread
                 self.root.after(0, lambda pt=progress_text: self.progress_var.set(pt))
@@ -304,27 +710,27 @@ class YouTubeDownloaderGUI:
                 filename = d.get('filename', 'file')
                 if self.audio_only_var.get():
                     # For audio downloads, show conversion status
-                    self.root.after(0, lambda: self.progress_var.set("Converting to MP3..."))
-                    self.root.after(0, lambda: self.detail_progress_var.set("Converting audio format, please wait..."))
+                    self.root.after(0, lambda: self.progress_var.set("🎵 Converting to MP3..."))
+                    self.root.after(0, lambda: self.detail_progress_var.set("🔄 Converting audio format, please wait..."))
                 else:
-                    self.root.after(0, lambda: self.progress_var.set("Processing..."))
-                    self.root.after(0, lambda: self.detail_progress_var.set("Finalizing download..."))
+                    self.root.after(0, lambda: self.progress_var.set("🔄 Processing..."))
+                    self.root.after(0, lambda: self.detail_progress_var.set("✨ Finalizing download..."))
                 self.root.after(0, lambda: self.progress_bar.config(value=100))
                 
             elif status == 'error':
                 error_msg = d.get('error', 'Unknown error occurred')
-                self.root.after(0, lambda: self.progress_var.set("Error occurred"))
-                self.root.after(0, lambda em=str(error_msg): self.detail_progress_var.set(f"Error: {em}"))
+                self.root.after(0, lambda: self.progress_var.set("❌ Error occurred"))
+                self.root.after(0, lambda em=str(error_msg): self.detail_progress_var.set(f"⚠️ Error: {em}"))
                 
             # Handle post-processor events (for MP3 conversion)
             elif 'postprocessor' in d:
                 postprocessor = d.get('postprocessor', '')
                 if 'FFmpegExtractAudio' in postprocessor:
-                    self.root.after(0, lambda: self.progress_var.set("Converting to MP3..."))
-                    self.root.after(0, lambda: self.detail_progress_var.set("Extracting audio and converting to MP3..."))
+                    self.root.after(0, lambda: self.progress_var.set("🎵 Converting to MP3..."))
+                    self.root.after(0, lambda: self.detail_progress_var.set("🔄 Extracting audio and converting to MP3..."))
                 elif 'finished' in str(d).lower():
-                    self.root.after(0, lambda: self.progress_var.set("Conversion complete"))
-                    self.root.after(0, lambda: self.detail_progress_var.set("MP3 conversion finished"))
+                    self.root.after(0, lambda: self.progress_var.set("✅ Conversion complete"))
+                    self.root.after(0, lambda: self.detail_progress_var.set("🎉 MP3 conversion finished"))
                 
         except Exception as e:
             # Prevent progress callback errors from crashing the download
@@ -334,8 +740,8 @@ class YouTubeDownloaderGUI:
     def cancel_download(self):
         """Cancel the current download"""
         self.download_cancelled = True
-        self.progress_var.set("Cancelling...")
-        self.detail_progress_var.set("Please wait while download is cancelled...")
+        self.progress_var.set("⏹️ Cancelling...")
+        self.detail_progress_var.set("🛑 Please wait while download is cancelled...")
     
     def start_download(self):
         url = self.url_var.get().strip()
@@ -348,8 +754,8 @@ class YouTubeDownloaderGUI:
         def download():
             try:
                 # Reset progress and update UI
-                self.root.after(0, lambda: self.progress_var.set("Initializing..."))
-                self.root.after(0, lambda: self.detail_progress_var.set(""))
+                self.root.after(0, lambda: self.progress_var.set("🚀 Initializing download..."))
+                self.root.after(0, lambda: self.detail_progress_var.set("🔄 Preparing to download..."))
                 self.root.after(0, lambda: self.progress_bar.config(value=0))
                 self.root.after(0, lambda: self.download_btn.config(state=tk.DISABLED))
                 self.root.after(0, lambda: self.cancel_btn.config(state=tk.NORMAL))
@@ -378,20 +784,20 @@ class YouTubeDownloaderGUI:
                     time.sleep(1)  # Give time for MP3 conversion to finish
                 
                 if self.download_cancelled:
-                    self.root.after(0, lambda: self.progress_var.set("Cancelled"))
-                    self.root.after(0, lambda: self.detail_progress_var.set("Download was cancelled"))
+                    self.root.after(0, lambda: self.progress_var.set("⏹️ Cancelled"))
+                    self.root.after(0, lambda: self.detail_progress_var.set("🛑 Download was cancelled by user"))
                 elif success:
-                    self.root.after(0, lambda: self.progress_var.set("Completed!"))
+                    self.root.after(0, lambda: self.progress_var.set("🎉 Download Complete!"))
                     if self.audio_only_var.get():
-                        self.root.after(0, lambda: self.detail_progress_var.set("MP3 download completed successfully"))
-                        self.root.after(0, lambda: messagebox.showinfo("Success", 
-                            f"Audio download completed!\n\nMP3 file saved to: {output_path}"))
+                        self.root.after(0, lambda: self.detail_progress_var.set("🎵 MP3 file ready to enjoy!"))
+                        self.root.after(0, lambda: messagebox.showinfo("🎉 Success!", 
+                            f"🎵 Audio download completed!\n\n📁 MP3 file saved to:\n{output_path}"))
                     else:
-                        self.root.after(0, lambda: self.detail_progress_var.set("Video download completed successfully"))
-                        self.root.after(0, lambda: messagebox.showinfo("Success", 
-                            f"Video download completed!\n\nSaved to: {output_path}"))
+                        self.root.after(0, lambda: self.detail_progress_var.set("🎬 Video file ready to watch!"))
+                        self.root.after(0, lambda: messagebox.showinfo("🎉 Success!", 
+                            f"🎬 Video download completed!\n\n📁 File saved to:\n{output_path}"))
                 else:
-                    self.root.after(0, lambda: messagebox.showerror("Error", "Download failed!"))
+                    self.root.after(0, lambda: messagebox.showerror("❌ Error", "Download failed!"))
                     
             except InvalidURLError as e:
                 error_msg = "Please enter a valid YouTube URL.\n\nSupported formats:\n• https://www.youtube.com/watch?v=...\n• https://youtu.be/...\n• https://m.youtube.com/watch?v=..."
@@ -409,7 +815,7 @@ class YouTubeDownloaderGUI:
                 error_msg = f"An unexpected error occurred:\n{str(e)}\n\nPlease try again or contact support."
                 self.root.after(0, lambda msg=error_msg: messagebox.showerror("Unexpected Error", msg))
             finally:
-                self.root.after(0, lambda: self.progress_var.set("Ready"))
+                self.root.after(0, lambda: self.progress_var.set("✨ Ready to download"))
                 self.root.after(0, lambda: self.detail_progress_var.set(""))
                 self.root.after(0, lambda: self.progress_bar.config(value=0))
                 self.root.after(0, lambda: self.download_btn.config(state=tk.NORMAL))
