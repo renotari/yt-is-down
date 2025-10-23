@@ -7,6 +7,8 @@ from downloader import (
     VideoUnavailableError, InvalidURLError, PlaylistError,
     PlaylistTooLargeError, PlaylistPrivateError
 )
+from config.download_config import DownloadConfig
+from config.error_messages import ErrorMessages, TroubleshootingMessages
 
 def format_bytes(bytes_val):
     """Convert bytes to human readable format"""
@@ -43,7 +45,7 @@ def progress_hook(d):
         
         # Create progress bar
         if total > 0:
-            bar_length = 30
+            bar_length = DownloadConfig.PROGRESS_BAR_LENGTH
             filled_length = int(bar_length * downloaded / total)
             bar = '█' * filled_length + '░' * (bar_length - filled_length)
             progress_line = f"\r[{bar}] {percent_str} | {downloaded_str}/{total_str} | {speed_str} | ETA: {eta_str}"
@@ -74,8 +76,8 @@ def main():
                        help='Download audio only (MP3)')
     parser.add_argument('-i', '--info', action='store_true',
                        help='Show video information only')
-    parser.add_argument('-t', '--timeout', type=int, default=30,
-                       help='Network timeout in seconds (default: 30)')
+    parser.add_argument('-t', '--timeout', type=int, default=DownloadConfig.DEFAULT_TIMEOUT,
+                       help=f'Network timeout in seconds (default: {DownloadConfig.DEFAULT_TIMEOUT})')
     parser.add_argument('--playlist-range', type=str, metavar='START:END',
                        help='Download only videos in range (e.g., 1:10 for first 10 videos)')
     
@@ -192,10 +194,7 @@ def main():
                 
     except InvalidURLError as e:
         print(f"\n❌ Invalid URL: {e}")
-        print("\n💡 Supported URL formats:")
-        print("   • https://www.youtube.com/watch?v=...")
-        print("   • https://youtu.be/...")
-        print("   • https://m.youtube.com/watch?v=...")
+        print(f"\n💡 {ErrorMessages.INVALID_URL_FORMAT}")
         sys.exit(1)
     except NetworkTimeoutError as e:
         print(f"\n⏰ Network Timeout: {e}")
@@ -232,11 +231,7 @@ def main():
         
         # Special handling for HTTP 403 errors
         if "403" in error_msg or "forbidden" in error_msg.lower():
-            print("\n🔧 Quick fixes for HTTP 403 errors:")
-            print("   1. pip install --upgrade yt-dlp")
-            print("   2. Wait 10-15 minutes and try again")
-            print("   3. Try different quality: --quality worst")
-            print("   4. Check if video is region-locked")
+            print(f"\n{TroubleshootingMessages.HTTP_403_FIXES}")
         
         sys.exit(1)
     except KeyboardInterrupt:

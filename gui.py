@@ -8,6 +8,8 @@ from downloader import (
     VideoUnavailableError, InvalidURLError, PlaylistError, 
     PlaylistTooLargeError, PlaylistPrivateError
 )
+from config.download_config import DownloadConfig
+from config.error_messages import ErrorMessages, InfoMessages, TroubleshootingMessages
 import os
 from pathlib import Path
 
@@ -40,7 +42,7 @@ class YouTubeDownloaderGUI:
         except:
             pass
         
-        self.downloader = YouTubeDownloader(timeout=30)
+        self.downloader = YouTubeDownloader(timeout=DownloadConfig.DEFAULT_TIMEOUT)
         self.video_info = None
         self.download_cancelled = False
         
@@ -205,43 +207,11 @@ class YouTubeDownloaderGUI:
     
     def show_shortcuts(self):
         """Show keyboard shortcuts dialog"""
-        shortcuts_text = """🎹 Keyboard Shortcuts:
-
-⌨️ Ctrl+Shift+V - Paste and validate URL
-⌨️ Enter (in URL field) - Get video info
-⌨️ Ctrl+Q - Quit application
-
-💡 Tips:
-• Copy any YouTube URL and the paste button will highlight
-• Press Enter after pasting a URL to quickly get video info
-• Use the Browse button to select a custom download folder"""
-        
-        messagebox.showinfo("🎹 Keyboard Shortcuts", shortcuts_text)
+        messagebox.showinfo("🎹 Keyboard Shortcuts", TroubleshootingMessages.KEYBOARD_SHORTCUTS)
     
     def show_about(self):
         """Show about dialog"""
-        about_text = """🎬 YouTube Downloader v2.0
-
-A modern, user-friendly YouTube video downloader built with Python.
-
-✨ Features:
-• Download videos in multiple qualities
-• Extract audio as MP3 files
-• Smart clipboard integration
-• Real-time progress tracking
-• Comprehensive error handling
-
-🛠️ Built with:
-• Python 3.7+
-• tkinter (GUI)
-• yt-dlp (Download engine)
-
-💝 Open Source
-This software is free and open source.
-
-🎯 Made for easy YouTube downloading!"""
-        
-        messagebox.showinfo("🎬 About YouTube Downloader", about_text)
+        messagebox.showinfo("🎬 About YouTube Downloader", TroubleshootingMessages.ABOUT_TEXT)
         
     def setup_ui(self):
         # Main container with minimal padding
@@ -732,8 +702,8 @@ This software is free and open source.
             if 'URL' in self.paste_btn.cget('text') or 'Playlist' in self.paste_btn.cget('text'):
                 self.paste_btn.configure(text='📋 Paste', bg='#065fd4')  # Blue
         
-        # Check again in 2 seconds
-        self.root.after(2000, self.check_clipboard)
+        # Check again after configured interval
+        self.root.after(DownloadConfig.CLIPBOARD_CHECK_INTERVAL, self.check_clipboard)
     
     def format_bytes(self, bytes_val):
         """Convert bytes to human readable format"""

@@ -113,11 +113,38 @@ This application prioritizes **safety over speed** when downloading playlists. W
 
 **This is normal and necessary for safe downloading!**
 
+## Project Structure
+
+```
+youtube-downloader/
+├── config/
+│   ├── download_config.py    # Configuration constants
+│   └── error_messages.py     # Standardized error messages
+├── docs/
+│   ├── refactoring-summary.md # Code improvement summary
+│   └── old/                  # Archived overengineering docs
+├── downloader.py             # Core download functionality
+├── gui.py                    # Graphical user interface
+├── cli.py                    # Command-line interface
+├── requirements.txt          # Python dependencies
+└── README.md                 # This file
+```
+
 ## Requirements
 
 - Python 3.7+
 - yt-dlp
 - tkinter (usually included with Python)
+
+## Code Quality
+
+This application has been refactored for better maintainability:
+- **Centralized Configuration**: All timeouts, delays, and settings in `config/download_config.py`
+- **Standardized Error Messages**: Consistent, helpful error messages in `config/error_messages.py`
+- **Clean Code Organization**: Well-structured methods and clear separation of concerns
+- **Easy Customization**: Modify behavior by changing constants rather than hunting through code
+
+See `docs/refactoring-summary.md` for details on the improvements made.
 
 ## Notes
 
