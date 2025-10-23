@@ -583,15 +583,18 @@ class YouTubeDownloader:
         }
         
         if audio_only:
+            # Use different output template for audio to avoid overwriting existing video files
+            audio_opts = base_opts.copy()
+            audio_opts['outtmpl'] = str(output_dir / '%(title)s [audio].%(ext)s')
             ydl_opts = {
-                **base_opts,
+                **audio_opts,
                 'format': FormatSelectors.BEST_AUDIO,
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': DownloadConfig.DEFAULT_AUDIO_QUALITY,
                 }],
-                'keepvideo': False,  # Remove original video file after conversion
+                'keepvideo': False,  # Safe to remove intermediate file (different name)
             }
         else:
             if quality == 'best':
@@ -729,15 +732,18 @@ class YouTubeDownloader:
             base_opts['playlist_end'] = end_idx
         
         if audio_only:
+            # Use different output template for audio to avoid overwriting existing video files
+            audio_opts = base_opts.copy()
+            audio_opts['outtmpl'] = str(output_dir / '%(playlist_title)s/%(title)s [audio].%(ext)s')
             ydl_opts = {
-                **base_opts,
+                **audio_opts,
                 'format': FormatSelectors.BEST_AUDIO,
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': DownloadConfig.DEFAULT_AUDIO_QUALITY,
                 }],
-                'keepvideo': False,
+                'keepvideo': False,  # Safe to remove intermediate file (different name)
             }
         else:
             if quality == 'best':
