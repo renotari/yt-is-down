@@ -153,6 +153,26 @@ class ErrorMessages:
 class InfoMessages:
     """Informational message templates."""
     
+    # Video in playlist messages
+    VIDEO_IN_PLAYLIST_DETECTED = (
+        "🎵 Video in Playlist Detected!\n\n"
+        "📹 Current Video: {video_title}\n"
+        "📋 Playlist: {playlist_title} ({playlist_count} videos)\n\n"
+        "What would you like to download?\n\n"
+        "• Click 'Yes' to download just this video\n"
+        "• Click 'No' to download the entire playlist\n"
+        "• Click 'Cancel' to choose different options"
+    )
+    
+    VIDEO_IN_PLAYLIST_CLI_INFO = (
+        "🎵 Video in Playlist Detected!\n"
+        "📹 Current Video: {video_title}\n"
+        "📋 Playlist: {playlist_title} ({playlist_count} videos)\n\n"
+        "💡 Options:\n"
+        "   • Add --video-only to download just the current video\n"
+        "   • Remove --video-only to download the entire playlist"
+    )
+    
     # Success messages
     DOWNLOAD_COMPLETE = "🎉 Download Complete!"
     AUDIO_DOWNLOAD_COMPLETE = "🎵 Audio download completed!\n\n📁 MP3 file saved to:\n{path}"

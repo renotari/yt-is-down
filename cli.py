@@ -80,6 +80,8 @@ def main():
                        help=f'Network timeout in seconds (default: {DownloadConfig.DEFAULT_TIMEOUT})')
     parser.add_argument('--playlist-range', type=str, metavar='START:END',
                        help='Download only videos in range (e.g., 1:10 for first 10 videos)')
+    parser.add_argument('--video-only', action='store_true',
+                       help='Download only the current video from a playlist URL (ignore playlist)')
     
     args = parser.parse_args()
     
@@ -91,8 +93,26 @@ def main():
             try:
                 info = downloader.get_content_info(args.url)
                 
+                # Handle video-in-playlist scenario
+                if info.get('is_video_in_playlist'):
+                    video_info = info['video_info']
+                    playlist_info = info['playlist_info']
+                    
+                    print(f"\n🎵 Video in Playlist Detected!")
+                    print(f"📹 Current Video: {video_info['title']}")
+                    print(f"👤 Video Uploader: {video_info['uploader']}")
+                    print(f"⏱️  Video Duration: {video_info['duration']} seconds")
+                    print(f"\n📋 Playlist: {playlist_info['title']}")
+                    print(f"👤 Playlist Uploader: {playlist_info['uploader']}")
+                    print(f"📊 Total Videos: {playlist_info['video_count']} videos")
+                    print(f"⏰ Estimated playlist time: ~{playlist_info['estimated_time_minutes']} minutes")
+                    
+                    print(f"\n💡 Options:")
+                    print(f"   • Add --video-only to download just the current video")
+                    print(f"   • Remove --video-only to download the entire playlist")
+                    
                 # Check if it's a playlist or single video
-                if info.get('is_playlist') or 'video_count' in info:
+                elif info.get('is_playlist') or 'video_count' in info:
                     print(f"\n📋 Playlist: {info['title']}")
                     print(f"👤 Uploader: {info['uploader']}")
                     print(f"📊 Videos: {info['video_count']} videos")
@@ -128,8 +148,33 @@ def main():
                     print("❌ Invalid playlist range format. Use START:END (e.g., 1:10)")
                     sys.exit(1)
             
+            # Check if user wants video-only from a playlist URL
+            if args.video_only and downloader._is_video_in_playlist_url(args.url):
+                print(f"🎵 Downloading current video only from playlist...")
+                video_url = downloader._extract_video_url_from_playlist(args.url)
+                print(f"🔗 Video URL: {video_url}")
+                print(f"🎯 Quality: {args.quality}")
+                print(f"🎵 Audio only: {args.audio_only}")
+                print(f"📁 Output directory: {args.output}")
+                print(f"⏰ Timeout: {args.timeout}s")
+                print("-" * 60)
+                
+                success = downloader.download_video(
+                    video_url,
+                    quality=args.quality,
+                    audio_only=args.audio_only,
+                    progress_callback=progress_hook
+                )
+                
+                if success:
+                    print("\n✅ Video download completed successfully!")
+                    print(f"📁 Files saved to: {args.output}")
+                else:
+                    print("\n❌ Video download failed!")
+                    sys.exit(1)
+            
             # Check if it's a playlist or single video
-            if downloader._is_playlist_url(args.url):
+            elif downloader._is_playlist_url(args.url) and not args.video_only:
                 print(f"🚀 Starting playlist download...")
                 print(f"🔗 URL: {args.url}")
                 print(f"🎯 Quality: {args.quality}")

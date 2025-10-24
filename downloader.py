@@ -220,12 +220,77 @@ class YouTubeDownloader:
         url_lower = url.lower()
         return any(indicator in url_lower for indicator in ValidationConfig.PLAYLIST_INDICATORS)
     
+    def _is_video_in_playlist_url(self, url: str) -> bool:
+        """Check if URL is a video within a playlist (has both video ID and playlist ID)"""
+        if not self._is_valid_url(url):
+            return False
+        
+        url_lower = url.lower()
+        has_video_id = 'watch?v=' in url_lower or 'youtu.be/' in url_lower
+        has_playlist_id = any(indicator in url_lower for indicator in ValidationConfig.PLAYLIST_INDICATORS)
+        
+        return has_video_id and has_playlist_id
+    
+    def _extract_video_url_from_playlist(self, url: str) -> str:
+        """Extract just the video URL from a playlist URL"""
+        import urllib.parse as urlparse
+        
+        parsed = urlparse.urlparse(url)
+        query_params = urlparse.parse_qs(parsed.query)
+        
+        # Get video ID
+        video_id = query_params.get('v', [None])[0]
+        if not video_id:
+            return url  # Return original if we can't extract video ID
+        
+        # Create clean video URL
+        if 'youtube.com' in parsed.netloc:
+            return f"https://www.youtube.com/watch?v={video_id}"
+        elif 'youtu.be' in parsed.netloc:
+            return f"https://youtu.be/{video_id}"
+        
+        return url  # Fallback to original URL
+    
+    def get_video_and_playlist_info(self, url: str) -> Dict[str, Any]:
+        """
+        Get information for both video and playlist when URL contains both
+        Used when user is watching a specific video in a playlist
+        """
+        self._validate_url(url)
+        
+        try:
+            # Get video info (just the current video)
+            video_url = self._extract_video_url_from_playlist(url)
+            video_info = self.get_video_info(video_url)
+            
+            # Get playlist info
+            playlist_info = self.get_playlist_info(url)
+            
+            return {
+                'is_video_in_playlist': True,
+                'video_info': video_info,
+                'playlist_info': playlist_info,
+                'video_url': video_url,
+                'playlist_url': url,
+                'video_title': video_info.get('title', 'Unknown'),
+                'playlist_title': playlist_info.get('title', 'Unknown Playlist'),
+                'playlist_video_count': playlist_info.get('video_count', 0)
+            }
+            
+        except Exception as e:
+            self.logger.exception("Failed to get video and playlist info")
+            raise YouTubeDownloaderError(f"Could not extract video and playlist information: {str(e)}")
+
     def get_content_info(self, url: str) -> Dict[str, Any]:
         """
         Intelligently detect and get information for either video or playlist
         This method tries to determine the content type automatically
         """
         self._validate_url(url)
+        
+        # Check if this is a video within a playlist
+        if self._is_video_in_playlist_url(url):
+            return self.get_video_and_playlist_info(url)
         
         # First, try to extract basic info to determine content type
         ydl_opts = {

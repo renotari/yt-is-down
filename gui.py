@@ -492,8 +492,11 @@ class YouTubeDownloaderGUI:
                 # Use smart content detection
                 self.video_info = self.downloader.get_content_info(url)
                 
+                # Check if this is a video within a playlist
+                if self.video_info.get('is_video_in_playlist'):
+                    self.root.after(0, self.handle_video_in_playlist)
                 # Check if it's a playlist and display accordingly
-                if self.video_info.get('is_playlist') or 'video_count' in self.video_info:
+                elif self.video_info.get('is_playlist') or 'video_count' in self.video_info:
                     self.video_info['is_playlist'] = True
                     self.root.after(0, self.display_playlist_info)
                 else:
@@ -520,6 +523,48 @@ class YouTubeDownloaderGUI:
                 self.root.after(0, lambda: self.progress_var.set("✨ Ready to download"))
         
         threading.Thread(target=fetch_info, daemon=True).start()
+    
+    def handle_video_in_playlist(self):
+        """Handle the case where user has a video within a playlist URL"""
+        if not self.video_info or not self.video_info.get('is_video_in_playlist'):
+            return
+        
+        video_title = self.video_info.get('video_title', 'Unknown Video')
+        playlist_title = self.video_info.get('playlist_title', 'Unknown Playlist')
+        playlist_count = self.video_info.get('playlist_video_count', 0)
+        
+        # Create choice dialog
+        choice_msg = InfoMessages.VIDEO_IN_PLAYLIST_DETECTED.format(
+            video_title=video_title,
+            playlist_title=playlist_title,
+            playlist_count=playlist_count
+        )
+        
+        result = messagebox.askyesnocancel(
+            "🎵 Video or Playlist?", 
+            choice_msg,
+            icon='question'
+        )
+        
+        if result is True:
+            # User wants just the video
+            self.video_info = self.video_info['video_info']
+            self.video_info['is_playlist'] = False
+            self.video_info['selected_choice'] = 'video'
+            self.display_video_info()
+            
+        elif result is False:
+            # User wants the entire playlist
+            self.video_info = self.video_info['playlist_info']
+            self.video_info['is_playlist'] = True
+            self.video_info['selected_choice'] = 'playlist'
+            self.display_playlist_info()
+            
+        else:
+            # User cancelled - reset state
+            self.progress_var.set("✨ Ready to download")
+            self.detail_progress_var.set("")
+            self.video_info = None
     
     def display_video_info(self):
         if not self.video_info:
@@ -831,11 +876,26 @@ class YouTubeDownloaderGUI:
                     return
                 
                 # Determine if it's a playlist or single video
-                if self.downloader._is_playlist_url(url):
+                # Check if user made a specific choice for video-in-playlist
+                user_choice = None
+                if hasattr(self, 'video_info') and self.video_info:
+                    user_choice = self.video_info.get('selected_choice')
+                
+                # Handle user's explicit choice
+                if user_choice == 'video':
+                    # User explicitly chose to download just the video
+                    video_url = self.video_info.get('video_url', url)
+                    success = self.downloader.download_video(
+                        video_url,
+                        quality=self.quality_var.get(),
+                        audio_only=self.audio_only_var.get(),
+                        progress_callback=self.progress_hook
+                    )
+                elif user_choice == 'playlist' or (self.downloader._is_playlist_url(url) and user_choice != 'video'):
+                    # User explicitly chose playlist OR it's a regular playlist URL
                     # Check if we have cached playlist info
                     playlist_info_to_pass = None
                     if hasattr(self, 'video_info') and self.video_info.get('is_playlist'):
-                        playlist_info_to_pass = self.video_info
                         video_count = self.video_info.get('video_count', 0)
                         estimated_time = self.video_info.get('estimated_time_minutes', 0)
                         
@@ -893,7 +953,7 @@ class YouTubeDownloaderGUI:
                     )
                     success = result.get('success', False)
                 else:
-                    # Download single video
+                    # Download single video (default case)
                     success = self.downloader.download_video(
                         url,
                         quality=self.quality_var.get(),
