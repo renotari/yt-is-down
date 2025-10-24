@@ -1,0 +1,33 @@
+# Include documentation
+include README.md
+include LICENSE
+include CHANGELOG.md
+recursive-include docs *.md
+
+# Include configuration files
+recursive-include config *.py
+
+# Include requirements
+include requirements.txt
+include pyproject.toml
+
+# Include build and distribution files
+include setup.py
+include MANIFEST.in
+
+# Exclude development and build artifacts
+exclude .gitignore
+exclude *.pyc
+exclude *.pyo
+exclude *~
+exclude .DS_Store
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *~
+recursive-exclude .git *
+recursive-exclude build *
+recursive-exclude dist *
+recursive-exclude *.egg-info *
+
+# Exclude old documentation
+recursive-exclude docs/old *

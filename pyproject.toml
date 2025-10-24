@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "youtube-downloader-secure"
+version = "2.0.0"
+description = "A secure, user-friendly YouTube video downloader with GUI and CLI"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "MIT"}
+authors = [
+    {name = "YouTube Downloader Team", email = "contact@example.com"},
+]
+maintainers = [
+    {name = "YouTube Downloader Team", email = "contact@example.com"},
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Internet :: WWW/HTTP",
+    "Environment :: X11 Applications :: Qt",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
+]
+dependencies = [
+    "yt-dlp>=2023.12.30",
+    "typing-extensions>=4.0.0",
+]
+keywords = ["youtube", "downloader", "video", "audio", "mp3", "mp4", "playlist", "gui", "cli", "secure"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "black>=21.0",
+    "flake8>=3.8",
+    "mypy>=0.800",
+    "pyinstaller>=5.0",
+]
+
+[project.scripts]
+youtube-dl-gui = "gui:main"
+youtube-dl-cli = "cli:main"
+
+[project.gui-scripts]
+youtube-downloader = "gui:main"
+
+[project.urls]
+Homepage = "https://github.com/renotari/yt-is-down"
+Repository = "https://github.com/renotari/yt-is-down"
+Issues = "https://github.com/renotari/yt-is-down/issues"
+Changelog = "https://github.com/renotari/yt-is-down/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/renotari/yt-is-down/blob/main/README.md"
+
+[tool.setuptools]
+packages = ["config"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = ["*.md", "*.txt", "*.yml", "*.yaml"]
+"config" = ["*.py"]
+"docs" = ["*.md"]
+
+[tool.black]
+line-length = 100
+target-version = ['py37']
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
